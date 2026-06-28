@@ -65,19 +65,21 @@
   #frameOuter{position:relative}
   /* The export surface. Its purple-bloom background blends with the card so the
      square layout reads intentionally rather than floating in empty space. */
-  #frame{position:absolute;left:0;top:0;transform-origin:top left;
+  #frame{position:absolute;left:0;top:0;transform-origin:top left;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
     background:
       radial-gradient(40% 52% at -2% 45%, rgba(123,44,255,.34), rgba(123,44,255,0) 70%),
       radial-gradient(40% 52% at 102% 45%, rgba(123,44,255,.30), rgba(123,44,255,0) 70%),
       radial-gradient(60% 28% at 50% -4%, rgba(123,44,255,.16), rgba(123,44,255,0) 70%),
       #08070D;}
 
-  .card-center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}
+  /* No transforms anywhere inside the frame — html2canvas mis-renders nested
+     transforms, so the card is sized natively and centered purely with flexbox. */
+  .card-center{display:flex}
 
   /* ===================== THE SHARE CARD (matches app) ===================== */
   #card{
-    --s:1;
-    width:330px;transform:scale(var(--s));transform-origin:center center;
+    width:330px;
     position:relative;overflow:hidden;border-radius:30px;color:var(--text);
     font-family:var(--font);
     background:
@@ -240,8 +242,9 @@
   const defaults = {ratio:'default', overall:94, potential:97, muscle:92, symmetry:90, bodyfat:95, definition:96, avatar:null};
   let state = {...defaults};
 
-  // Export-resolution frame sizes; on-screen sizes are derived from these.
-  const RATIOS = { default:{w:540,h:1170}, square:{w:720,h:720} };
+  // Frame sizes are tuned so the native-width (330px) card fills them with the
+  // same margins the preview showed — no scaling transform needed.
+  const RATIOS = { default:{w:350,h:740}, square:{w:740,h:740} };
   const PREVIEW_W = 540, PREVIEW_H = 780;
 
   // ---- tier system (mirrors the app's scoreTier) ----
@@ -320,24 +323,17 @@
     layout();
   }
 
-  // ---- frame / card sizing ----
+  // ---- frame sizing ----
   function layout(){
     const {w,h}=RATIOS[state.ratio];
     const frame=document.getElementById('frame');
     const outer=document.getElementById('frameOuter');
-    const card=document.getElementById('card');
 
     frame.style.width=w+'px'; frame.style.height=h+'px';
 
-    // measure card at scale 1, then scale it to fill the frame as much as the
-    // aspect allows (portrait fills width; square fills height, blooms fill sides)
-    card.style.setProperty('--s',1);
-    const cw=card.offsetWidth, ch=card.offsetHeight;
-    const [fw,fh] = state.ratio==='default' ? [0.96,0.985] : [0.92,0.94];
-    const s=Math.min((w*fw)/cw,(h*fh)/ch);
-    card.style.setProperty('--s',s);
-
-    // on-screen preview scale
+    // The card sits at native size, centered by the frame's flexbox — no card
+    // transform. Only the frame is scaled, and only for on-screen display; that
+    // scale is removed during export so html2canvas captures it at 1:1.
     const S=Math.min(PREVIEW_W/w, PREVIEW_H/h);
     frame.style.transform=`scale(${S})`;
     outer.style.width=(w*S)+'px';
