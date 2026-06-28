@@ -40,7 +40,7 @@
     background:#eef0f2;color:#3a3a3a;font-family:inherit}
   .ratio-btn.active{background:var(--blue);color:#fff}
   .pp-row{display:flex;align-items:center;gap:12px}
-  .pp-prev{position:relative;width:58px;height:58px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;
+  .pp-prev{width:58px;height:58px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;
     overflow:hidden;flex-shrink:0;color:#aeb4be}
   .pp-prev svg{width:22px;height:22px}
   .upload-btn{padding:9px 15px;border-radius:9px;border:1px solid #e3e5e8;background:#f4f5f6;color:#333;font-size:13.5px;
@@ -96,14 +96,9 @@
   .avatar{width:124px;height:124px;border-radius:32px;padding:2.5px;
     background:linear-gradient(140deg, var(--purple) 0%, var(--greenAccent) 100%);
     box-shadow:0 12px 34px rgba(0,0,0,.55), 0 0 42px rgba(123,44,255,.35), 0 0 52px rgba(32,224,160,.20)}
-  .avatar-inner{position:relative;width:100%;height:100%;border-radius:30px;background:#15171B;overflow:hidden;
+  .avatar-inner{width:100%;height:100%;border-radius:30px;background:#15171B;overflow:hidden;
     display:flex;align-items:center;justify-content:center}
   .avatar-inner svg{width:42px;height:42px;color:rgba(255,255,255,.30)}
-  /* av-bg = baked blurred copy that fills the box; av-fg = the full photo,
-     contained so nothing is cropped. Both are plain images, so html2canvas
-     exports them identically to the on-screen preview. */
-  .av-bg{position:absolute;inset:0;width:100%;height:100%;display:block}
-  .av-fg{position:absolute;display:block}
 
   /* hero */
   .hero{position:relative;display:flex;flex-direction:column;align-items:center;margin-top:20px}
@@ -242,8 +237,7 @@
     {key:'symmetry',  label:'Symmetry'},
     {key:'bodyfat',   label:'Body Fat'},
   ];
-  const defaults = {ratio:'default', overall:94, potential:97, muscle:92, symmetry:90, bodyfat:95, definition:96,
-    avatarFull:null, avatarBlur:null, avatarW:0, avatarH:0};
+  const defaults = {ratio:'default', overall:94, potential:97, muscle:92, symmetry:90, bodyfat:95, definition:96, avatar:null};
   let state = {...defaults};
 
   // Frame sizes are tuned so the native-width (330px) card fills them with the
@@ -304,43 +298,17 @@
     p.style.boxShadow=`0 0 16px ${rgba(t.color,.2)}`;
     document.getElementById('barOverall').style.cssText=barFill(state.overall,t.color);
   }
-  // Build the two-layer markup for a square box of side `box`px: a baked
-  // blurred fill underneath, the full uncropped photo (contained) on top.
-  function avatarLayers(box){
-    const s=Math.min(box/state.avatarW, box/state.avatarH);
-    const w=state.avatarW*s, h=state.avatarH*s;
-    const left=(box-w)/2, top=(box-h)/2;
-    return `<img class="av-bg" src="${state.avatarBlur}" alt="">`
-         + `<img class="av-fg" src="${state.avatarFull}" alt="" style="width:${w}px;height:${h}px;left:${left}px;top:${top}px">`;
-  }
   function renderAvatar(){
     const inner=document.getElementById('cAvatar');
     const prev=document.getElementById('ppPrev');
-    if(state.avatarFull && state.avatarW){
-      inner.style.background='#15171B'; inner.innerHTML=avatarLayers(119); // card avatar inner box
-      prev.style.background='#374151';  prev.innerHTML=avatarLayers(58);   // sidebar circle
+    if(state.avatar){
+      // Cover-crop fill via background-size:cover. html2canvas renders this
+      // identically to the preview (no object-fit involved).
+      inner.innerHTML='';
+      inner.style.background=`#15171B url("${state.avatar}") center 28% / cover no-repeat`;
+      prev.innerHTML='';
+      prev.style.background=`#374151 url("${state.avatar}") center / cover no-repeat`;
     }
-  }
-  // Bake a blurred, slightly-darkened square copy of the photo. Because it's a
-  // raster (not a live CSS filter), html2canvas reproduces it exactly on export.
-  function ingestAvatar(src){
-    const img=new Image();
-    img.onload=()=>{
-      state.avatarW=img.naturalWidth; state.avatarH=img.naturalHeight; state.avatarFull=src;
-      const N=360, c=document.createElement('canvas'); c.width=N; c.height=N;
-      const x=c.getContext('2d');
-      x.fillStyle='#15171B'; x.fillRect(0,0,N,N);
-      x.filter='blur(16px)';
-      const ar=img.naturalWidth/img.naturalHeight;
-      let dw,dh; if(ar>1){dh=N; dw=N*ar;} else {dw=N; dh=N/ar;}
-      dw*=1.3; dh*=1.3;                       // overscan so blur has no transparent edge
-      x.drawImage(img,(N-dw)/2,(N-dh)/2,dw,dh);
-      x.filter='none';
-      x.fillStyle='rgba(8,7,13,0.5)'; x.fillRect(0,0,N,N); // darken for contrast
-      state.avatarBlur=c.toDataURL('image/png');
-      renderAvatar();
-    };
-    img.src=src;
   }
   function render(){
     document.querySelectorAll('.ratio-btn').forEach(b=>b.classList.toggle('active', b.dataset.ratio===state.ratio));
@@ -379,7 +347,7 @@
   document.getElementById('uploadBtn').addEventListener('click',()=>document.getElementById('fileInput').click());
   document.getElementById('fileInput').addEventListener('change',e=>{
     const f=e.target.files[0]; if(!f) return;
-    const r=new FileReader(); r.onload=ev=>ingestAvatar(ev.target.result); r.readAsDataURL(f);
+    const r=new FileReader(); r.onload=ev=>{state.avatar=ev.target.result;renderAvatar();}; r.readAsDataURL(f);
   });
   document.getElementById('resetBtn').addEventListener('click',()=>{
     state={...defaults};
