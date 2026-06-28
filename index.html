@@ -511,12 +511,15 @@
   document.getElementById('cropApply').addEventListener('click',()=>{
     const s=dispScale();
     const sx=(0-crop.ox)/s, sy=(0-crop.oy)/s, span=crop.V/s; // source square in natural px
-    const OUT=600;
+    // Output at the cropped region's true pixel size (capped), so we keep the
+    // uploaded photo's real resolution and never upscale/soften it.
+    const MAX_OUT=1600;
+    const OUT=Math.max(1, Math.round(Math.min(span, MAX_OUT)));
     const c=document.createElement('canvas'); c.width=OUT; c.height=OUT;
     const x=c.getContext('2d');
     x.imageSmoothingEnabled=true; x.imageSmoothingQuality='high';
     x.drawImage(crop.img, sx, sy, span, span, 0, 0, OUT, OUT);
-    state.avatar=c.toDataURL('image/png');
+    state.avatar=c.toDataURL('image/png'); // PNG = lossless, no recompression artifacts
     closeCropper();
     renderAvatar();
   });
