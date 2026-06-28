@@ -142,8 +142,10 @@
   .bar>span{display:block;height:100%;border-radius:999px}
 
   @media (max-width:780px){
-    body{grid-template-columns:1fr}
-    .sidebar{border-right:none;border-bottom:1px solid #ececef}
+    body{display:flex;flex-direction:column;min-height:100dvh;overflow-x:hidden}
+    /* Preview first so creators immediately see the card, sized to fully fit. */
+    .stage{order:1;overflow:visible;padding:14px 12px 10px;background:#eef0f2;flex:0 0 auto}
+    .sidebar{order:2;overflow:visible;border-right:none;border-top:1px solid #e3e5e8;padding:20px 18px 40px}
   }
 
   /* ===================== CROP MODAL ===================== */
@@ -398,7 +400,12 @@
     // The card sits at native size, centered by the frame's flexbox — no card
     // transform. Only the frame is scaled, and only for on-screen display; that
     // scale is removed during export so html2canvas captures it at 1:1.
-    const S=Math.min(PREVIEW_W/w, PREVIEW_H/h);
+    let boxW=PREVIEW_W, boxH=PREVIEW_H;
+    if(window.innerWidth<=780){            // phone: fit screen so the whole card shows
+      boxW=window.innerWidth-24;
+      boxH=Math.round(window.innerHeight*0.64);  // innerHeight is stable when keyboard opens
+    }
+    const S=Math.min(boxW/w, boxH/h);
     frame.style.transform=`scale(${S})`;
     outer.style.width=(w*S)+'px';
     outer.style.height=(h*S)+'px';
@@ -544,6 +551,7 @@
 
   render();
   window.addEventListener('resize',layout);
+  window.addEventListener('orientationchange',()=>setTimeout(layout,150));
 </script>
 </body>
 </html>
